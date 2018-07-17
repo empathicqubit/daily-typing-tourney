@@ -1,0 +1,14 @@
+{
+    "libs": [
+        "ecma5",
+        "ecma6",
+        "browser",
+        "chai",
+        "underscore"
+    ],
+	"plugins": {
+		"node": {},
+        "es_modules": {},
+        "jsx": {}
+	}
+}

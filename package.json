@@ -1,0 +1,26 @@
+{
+  "name": "daily-typing-tourney",
+  "version": "1.0.0",
+  "description": "Generates typing tournaments and posts to Slack. Gets results from previous.",
+  "main": "index.js",
+  "repository": "https://github.com/empathicqubit/daily-typing-tourney",
+  "author": "empathicqubit <empathicqubit@allons.me>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "debug": "nodemon -- --inspect-brk ./index.js",
+    "start": "node ./index.js --production"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "geckodriver": "^1.11.0",
+    "lodash": "^4.17.10",
+    "node-fetch": "^2.1.2",
+    "q": "^1.5.1",
+    "selenium-webdriver": "^4.0.0-alpha.1",
+    "slack": "^11.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.2"
+  }
+}
