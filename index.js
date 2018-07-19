@@ -91,34 +91,37 @@ const getLastTournamentResults = (msg) => {
         .then(text => {
             const doc = cheerio.load(text);
 
-            const users = _.times(doc('#competition-rank-table tbody tr').length, () => ({}));
-            Array.from(doc('#competition-rank-table tbody tr td.rank span')).forEach((rank, idx) => {
+            const rows = doc('#competition-rank-table tbody tr').has('td.tests_taken');
+
+
+            const users = _.times(rows.length, () => ({}));
+            Array.from(rows.find('td.rank span')).forEach((rank, idx) => {
                 try {
                     users[idx].rank = parseInt(rank.children[0].data);
                 }
                 catch(e) { }
             });
 
-            Array.from(doc('#competition-rank-table tbody tr td.username a')).forEach((username, idx) => {
+            Array.from(rows.find('td.username a')).forEach((username, idx) => {
                 users[idx].username = username.children[0].data;
                 users[idx].userHref = username.attribs.href;
             });
 
-            Array.from(doc('#competition-rank-table tbody tr td.wpm')).forEach((wpm, idx) => {
+            Array.from(rows.find('td.wpm')).forEach((wpm, idx) => {
                 try {
                     users[idx].wpm = parseFloat(wpm.children[0].data);
                 }
                 catch(e) { }
             });
 
-            Array.from(doc('#competition-rank-table tbody tr td.keystrokes')).forEach((keystrokes, idx) => {
+            Array.from(rows.find('td.keystrokes')).forEach((keystrokes, idx) => {
                 try {
                     users[idx].keystrokes = parseFloat(/[0-9\.]+/gi.exec(keystrokes.children[0].data)[0]);
                 }
                 catch(e) { }
             });
 
-            Array.from(doc('#competition-rank-table tbody tr td.tests_taken')).forEach((testsTaken, idx) => {
+            Array.from(rows.find('td.tests_taken')).forEach((testsTaken, idx) => {
                 try {
                     users[idx].testsTaken = parseFloat(testsTaken.children[0].data);
                 }
