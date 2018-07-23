@@ -9,20 +9,20 @@ const config = require('./config/config');
 const q = require('q');
 const fetch = require('node-fetch');
 
-const opts = new firefox.Options();
-
 const isProduction = process.argv[2] == '--production';
 
-if(isProduction) {
-    opts.addArguments('--headless');
-}
-
-const driver = new selenium.Builder()
-    .forBrowser('firefox')
-    .setFirefoxOptions(opts)
-    .build();
-
 const getNewTournament = () => {
+    const opts = new firefox.Options();
+
+    if(isProduction) {
+        opts.addArguments('--headless');
+    }
+
+    const driver = new selenium.Builder()
+        .forBrowser('firefox')
+        .setFirefoxOptions(opts)
+        .build();
+
     return q.resolve()
         .then(() => driver.get('https://10fastfingers.com/login'))
         .then(() => driver.findElement(By.css('.social-login.twitter-btn-tb')).click())
@@ -36,14 +36,19 @@ const getNewTournament = () => {
         .then(() => driver.findElement(By.css('#private-competition')).click())
         .then(() => driver.findElement(By.css('#speedtestid1')).click())
         .then(() => driver.findElement(By.css('#link-create-competition')).click())
-        .then(() => driver.findElement(By.css('#share-link a')).getAttribute('href'));
+        .then(() => driver.findElement(By.css('#share-link a')).getAttribute('href'))
+        .then(() => driver.quit())
+        .catch((e) => {
+            driver.quit();
+            throw e;
+        });
 }
 
 const getLastTournamentMessage = () => {
     return q.resolve()
         .then(() => slack.search.messages({
             token: config.slack.token,
-            query: `in:${config.slack.channelIds.join(',')} has:link 10fastfingers competition`,
+            query: `in:${config.slack.channels.map(x => x.name).join(',')} has:link 10fastfingers competition`,
             sort: 'timestamp',
         }))
         .then(slackResults => {
@@ -62,6 +67,8 @@ const getLastTournamentMessage = () => {
                 }
             }
 
+            console.log('Last message', slackMatch);
+
             return attachment && slackMatch && {
                 message: slackMatch,
                 attachment: attachment,
@@ -77,6 +84,7 @@ const getLastTournamentResults = (msg) => {
     const params = new url.URLSearchParams();
     params.append('hash_id', hash);
 
+    let users;
     return q.resolve()
         .then(() => fetch(`https://10fastfingers.com/competitions/get_competition_rankings`, {
             method: 'POST',
@@ -94,7 +102,7 @@ const getLastTournamentResults = (msg) => {
             const rows = doc('#competition-rank-table tbody tr').has('td.tests_taken');
 
 
-            const users = _.times(rows.length, () => ({}));
+            users = _.times(rows.length, () => ({}));
             Array.from(rows.find('td.rank span')).forEach((rank, idx) => {
                 try {
                     users[idx].rank = parseInt(rank.children[0].data);
@@ -105,7 +113,7 @@ const getLastTournamentResults = (msg) => {
             Array.from(rows.find('td.username a')).forEach((username, idx) => {
                 users[idx].username = username.children[0].data;
                 users[idx].userHref = username.attribs.href;
-            });
+            })
 
             Array.from(rows.find('td.wpm')).forEach((wpm, idx) => {
                 try {
@@ -127,6 +135,40 @@ const getLastTournamentResults = (msg) => {
                 }
                 catch(e) { }
             });
+        })
+        .then(() => {
+            return q.all(config.slack.channels.map(channel => {
+                return slack.conversations.members({
+                    token: config.slack.token,
+                    channel: channel.id,
+                });
+            }));
+        })
+        .then(channels => {
+            const promises = 
+                _(channels)
+                .map(x => x.members)
+                .flatten()
+                .map(memberId => 
+                    slack.users.info({
+                        token: config.slack.token,
+                        user: memberId,
+                    })
+                )
+                .value();
+
+            return q.all(promises);
+        })
+        .then(members => {
+            let done = false;
+            for(const user of users) {
+                for(const member of members) {
+                    if(new RegExp(member.user.real_name.replace(/\s+/g, '.*'), 'gi').test(user.username)) {
+                        user.slackId = member.user.id;
+                        break;
+                    }
+                }
+            }
 
             return users;
         });
@@ -139,13 +181,13 @@ const maybePostMessage = (msg) => {
         return q.resolve();
     }
 
-    return q.all(config.slack.channelIds.map(channelId => {
+    return q.all(config.slack.channels.map(channel => {
         const final = Object.assign({
             unfurl_links: true,
             unfurl_media: true,
         }, msg, {
             token: config.slack.token,
-            channel: channelId,
+            channel: channel.id,
             username: config.slack.username,
         });
 
@@ -164,7 +206,14 @@ q.resolve()
         return getLastTournamentMessage();
     })
     .then(msg => {
-        if(isProduction && msg && new Date(msg.message.ts * 1000).getDate() == new Date().getDate()) {
+        const promises = [];
+
+        if(isProduction && msg && 
+            (
+                // No weekends
+                [0, 6].includes(new Date().getDay()) 
+                || new Date(msg.message.ts * 1000).getDate() == new Date().getDate())
+            ) {
             if(!config.slack.ignoreLastTimestamp) {
                 console.log('We already ran today!');
                 debugger;
@@ -172,16 +221,18 @@ q.resolve()
                 throw new Error('I shouldn\'t get here!!!');
             }
             else {
-                return q.all([getLastTournamentResults(msg), getNewTournament(), maybePostMessage({ text: 'Please disregard the following messages!' })]);
+                promises.push(maybePostMessage({ text: 'Please disregard the following messages!' }));
             }
         }
 
-        return q.all([getLastTournamentResults(msg), getNewTournament()])
+        promises.push(getLastTournamentResults(msg));
+        promises.push(getNewTournament());
+        return q.all(promises);
     })
     .spread((r, tu) => (results = r, tournamentUrl = tu))
     .then(() => {
         const text = `Happy ${dayName}! Here are the results for the last tournament:` + results.map(result => `
-#${result.rank}: *${result.username}* ${result.wpm}WPM`).join('');
+#${result.rank}: *${result.slackId ? "@" + result.slackId : result.username}* ${result.wpm}WPM`).join('');
 
         return maybePostMessage({
             text: text,
@@ -193,9 +244,7 @@ q.resolve()
         });
     })
     .delay(10000)
-    .then(() => driver.quit())
     .catch(e => {
-        driver.quit();
         console.error(e);
         process.exit(1);
     });
