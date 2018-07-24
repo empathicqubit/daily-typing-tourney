@@ -23,8 +23,14 @@ const getNewTournament = () => {
         .setFirefoxOptions(opts)
         .build();
 
+    let href;
     return q.resolve()
         .then(() => driver.get('https://10fastfingers.com/login'))
+
+        // Effing GPDR
+        .then(() => driver.wait(until.elementsLocated(By.css(".cc-dismiss"))))
+        .then(() => driver.findElement(By.css('.cc-dismiss')).click())
+
         .then(() => driver.findElement(By.css('.social-login.twitter-btn-tb')).click())
         .then(() => driver.wait(until.elementsLocated(By.css("#username_or_email"))))
         .then(() => driver.findElement(By.css('#username_or_email')).sendKeys(config.twitter.username))
@@ -37,7 +43,8 @@ const getNewTournament = () => {
         .then(() => driver.findElement(By.css('#speedtestid1')).click())
         .then(() => driver.findElement(By.css('#link-create-competition')).click())
         .then(() => driver.findElement(By.css('#share-link a')).getAttribute('href'))
-        .then(() => driver.quit())
+        .then(h => (href = h, driver.quit()))
+        .then(() => href)
         .catch((e) => {
             driver.quit();
             throw e;
@@ -178,6 +185,7 @@ const dayName = new Date().toLocaleString('en-US', { weekday: 'long' });
 
 const maybePostMessage = (msg) => {
     if(!isProduction) {
+        console.log(msg);
         return q.resolve();
     }
 
@@ -232,7 +240,7 @@ q.resolve()
     .spread((r, tu) => (results = r, tournamentUrl = tu))
     .then(() => {
         const text = `Happy ${dayName}! Here are the results for the last tournament:` + results.map(result => `
-#${result.rank}: *${result.slackId ? "@" + result.slackId : result.username}* ${result.wpm}WPM`).join('');
+#${result.rank}: *${result.slackId ? `<@${result.slackId}>` : result.username}* ${result.wpm}WPM`).join('');
 
         return maybePostMessage({
             text: text,
