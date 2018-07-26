@@ -197,6 +197,7 @@ const maybePostMessage = (msg) => {
             token: config.slack.token,
             channel: channel.id,
             username: config.slack.username,
+            icon_url: config.slack.icon_url,
         });
 
         return slack.chat.postMessage(final);

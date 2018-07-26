@@ -4,6 +4,7 @@ module.exports = {
         token: process.env.SLACK_TOKEN,
         channelIds: ["#daily-typing-tourney"],
         username: "Daily Typing Tourney",
+        icon_url: "https://storage.googleapis.com/allons-me-322e36cf-static/daily-typing-tourney.png",
     },
     twitter: {
         username: process.env.TWITTER_USERNAME,
