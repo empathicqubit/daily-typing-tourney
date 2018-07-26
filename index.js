@@ -131,7 +131,7 @@ const getLastTournamentResults = (msg) => {
 
             Array.from(rows.find('td.keystrokes')).forEach((keystrokes, idx) => {
                 try {
-                    users[idx].keystrokes = parseFloat(/[0-9\.]+/gi.exec(keystrokes.children[0].data)[0]);
+                    users[idx].keystrokes = parseFloat((/[0-9\.]+/gi).exec(keystrokes.children[0].data)[0]);
                 }
                 catch(e) { }
             });
@@ -216,11 +216,14 @@ q.resolve()
     .then(msg => {
         const promises = [];
 
+        const now = new Date();
         if(isProduction && msg && 
             (
+                // No early
+                now.getHours() < 5
                 // No weekends
-                [0, 6].includes(new Date().getDay()) 
-                || new Date(msg.message.ts * 1000).getDate() == new Date().getDate())
+                || [0, 6].includes(now.getDay()) 
+                || new Date(msg.message.ts * 1000).getDate() == now.getDate())
             ) {
             if(!config.slack.ignoreLastTimestamp) {
                 console.log('We already ran today!');

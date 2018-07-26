@@ -9,7 +9,8 @@
   "private": true,
   "scripts": {
     "debug": "nodemon -- --inspect-brk ./index.js",
-    "start": "node ./index.js --production"
+    "start": "node ./index.js --production",
+    "lint": "eslint ."
   },
   "dependencies": {
     "cheerio": "^1.0.0-rc.2",
@@ -21,6 +22,7 @@
     "slack": "^11.0.0"
   },
   "devDependencies": {
+    "eslint": "^5.2.0",
     "nodemon": "^1.18.2"
   }
 }
