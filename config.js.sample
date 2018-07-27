@@ -2,7 +2,12 @@ module.exports = {
     slack: {
         ignoreLastTimestamp: false,
         token: process.env.SLACK_TOKEN,
-        channelIds: ["#daily-typing-tourney"],
+        channels: [
+            {
+                "name": "#daily-typing-tourney",
+                "id": "CBL96JPPX",
+            },
+        ],
         username: "Daily Typing Tourney",
         icon_url: "https://storage.googleapis.com/allons-me-322e36cf-static/daily-typing-tourney.png",
     },
