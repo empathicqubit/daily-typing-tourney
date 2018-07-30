@@ -9,6 +9,8 @@ const config = require('./config/config');
 const q = require('q');
 const fetch = require('node-fetch');
 
+require('geckodriver');
+
 const isProduction = process.argv[2] == '--production';
 
 const getNewTournament = () => {
