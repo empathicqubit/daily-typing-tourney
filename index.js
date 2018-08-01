@@ -8,15 +8,21 @@ const cheerio = require('cheerio');
 const config = require('./config/config');
 const q = require('q');
 const fetch = require('node-fetch');
+const argv = require('yargs').argv;
 
 require('geckodriver');
 
-const isProduction = process.argv[2] == '--production';
+const isProduction = !!argv.production;
+
+const notHeadless = !!argv.notheadless;
+
+console.log('Production?', isProduction);
+console.log('Run non-headless?', notHeadless);
 
 const getNewTournament = () => {
     const opts = new firefox.Options();
 
-    if(isProduction) {
+    if(isProduction && !notHeadless) {
         opts.addArguments('--headless');
     }
 
